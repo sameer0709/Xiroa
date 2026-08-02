@@ -1,0 +1,47 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: xiroa-backend
+  # Default profile is H2 (in-memory, auto-seeds demo data).
+  # For PostgreSQL, set SPRING_PROFILES_ACTIVE=postgres (see application-postgres.yml).
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:default}
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:xiroadb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
+    driver-class-name: ${DB_DRIVER:org.h2.Driver}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+xiroa:
+  jwt:
+    # IMPORTANT: override in production via env var XIROA_JWT_SECRET.
+    secret: ${XIROA_JWT_SECRET:ChangeMeSuperSecretKeyForXiroaStartup2026AtLeast32Bytes!}
+    expiration-ms: 86400000
+  ai:
+    provider: ${AI_PROVIDER:rule-based}
+    openai-api-key: ${OPENAI_API_KEY:}
+    openai-model: gpt-4o-mini
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    org.springframework.security: INFO

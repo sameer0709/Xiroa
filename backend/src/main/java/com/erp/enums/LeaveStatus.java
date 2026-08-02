@@ -1,0 +1,5 @@
+package com.erp.enums;
+
+public enum LeaveStatus {
+    PENDING, APPROVED, REJECTED
+}

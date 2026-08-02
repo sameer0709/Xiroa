@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: xiroa-postgres
+    environment:
+      POSTGRES_DB: xiroadb
+      POSTGRES_USER: xiroa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-xiroa}
+    ports:
+      - "5432:5432"
+    volumes:
+      - xiroa_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xiroa -d xiroadb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: xiroa-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      DB_URL: jdbc:postgresql://db:5432/xiroadb
+      DB_USERNAME: xiroa
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-xiroa}
+      XIROA_JWT_SECRET: ${XIROA_JWT_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: xiroa-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  xiroa_pgdata:
+
