@@ -24,13 +24,33 @@ A modern, full-stack **Enterprise Resource Planning (ERP)** system for Indian SM
 
 ---
 
-## 🔑 Demo Credentials
+## 🔑 Default Credentials
 
-| Role                | Username   | Password      |
-| ------------------- | ---------- | ------------- |
-| Admin (full access) | `admin`    | `admin123`    |
-| Manager             | `manager`  | `manager123`  |
-| Employee            | `employee` | `employee123` |
+On a fresh database, Xiroa **always** creates a default admin account so you can log in immediately:
+
+| Role                | Username | Password                                   |
+| ------------------- | -------- | ------------------------------------------ |
+| Admin (full access) | `admin`  | `admin123` (override via `ADMIN_PASSWORD`) |
+
+> ⚠️ **Important:** Change the admin password before any real deployment (set `ADMIN_PASSWORD`).
+
+### Demo dataset (optional)
+
+Demo data (products, invoices, customers, payroll, manager/employee logins) is **disabled by default** for production. To load the sample dataset for sales demos:
+
+```powershell
+# PowerShell (Windows)
+$env:SEED_DEMO = "true"
+cd backend
+..\tools\apache-maven-3.9.9\bin\mvn.cmd spring-boot:run
+```
+
+When `SEED_DEMO=true` you also get:
+
+| Role     | Username   | Password      |
+| -------- | ---------- | ------------- |
+| Manager  | `manager`  | `manager123`  |
+| Employee | `employee` | `employee123` |
 
 ---
 

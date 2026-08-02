@@ -37,6 +37,9 @@ public class InsightService {
     @Value("${xiroa.ai.openai-api-key}")
     private String openAiKey;
 
+    @Value("${xiroa.ai.openai-model}")
+    private String openAiModel;
+
     public InsightService(BusinessInsightRepository insightRepository,
             InventoryRepository inventoryRepository,
             InvoiceRepository invoiceRepository,
@@ -177,16 +180,42 @@ public class InsightService {
         try {
             RestTemplate rt = new RestTemplate();
             var body = java.util.Map.of(
-                    "model", "gpt-4o-mini",
+                    "model", openAiModel,
                     "messages", List.of(java.util.Map.of("role", "user", "content", prompt)),
-                    "max_tokens", 300);
+                    "max_tokens", 400);
             var headers = new org.springframework.http.HttpHeaders();
             headers.setBearerAuth(openAiKey);
             var entity = new org.springframework.http.HttpEntity<>(body, headers);
             var resp = rt.postForObject("https://api.openai.com/v1/chat/completions", entity, String.class);
-            return resp == null ? "No response from OpenAI" : resp;
+            if (resp == null) {
+                return "No response from OpenAI";
+            }
+            // Extract clean text from choices[0].message.content
+            try {
+                com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readTree(resp);
+                com.fasterxml.jackson.databind.JsonNode content = root.path("choices").path(0).path("message")
+                        .path("content");
+                if (!content.isMissingNode() && !content.asText().isBlank()) {
+                    return content.asText();
+                }
+                com.fasterxml.jackson.databind.JsonNode err = root.path("error");
+                return err.isMissingNode() ? resp : "OpenAI API error: " + err.path("message").asText();
+            } catch (Exception e) {
+                return resp; // not JSON — return raw
+            }
         } catch (Exception e) {
-            return "OpenAI call failed: " + e.getMessage();
+            String msg = e.getMessage() == null ? "Unknown error" : e.getMessage();
+            if (msg.contains("429") || msg.contains("quota") || msg.contains("billing")) {
+                return "⚠️ AI assistant is configured, but your OpenAI account has exceeded its quota or needs billing setup. "
+                        +
+                        "Add credits at https://platform.openai.com/settings/billing, then try again. " +
+                        "Meanwhile, use \"Generate AI Insights\" (rule-based) for instant analysis.";
+            }
+            if (msg.contains("401") || msg.contains("Unauthorized") || msg.contains("invalid api key")) {
+                return "⚠️ OpenAI API key is invalid. Check your OPENAI_API_KEY.";
+            }
+            return "OpenAI call failed: " + msg;
         }
     }
 }

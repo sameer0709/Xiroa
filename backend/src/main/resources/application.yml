@@ -31,6 +31,12 @@ xiroa:
     # IMPORTANT: override in production via env var XIROA_JWT_SECRET.
     secret: ${XIROA_JWT_SECRET:ChangeMeSuperSecretKeyForXiroaStartup2026AtLeast32Bytes!}
     expiration-ms: 86400000
+  # Demo data seeding (products, invoices, customers, payroll, etc.)
+  # Set SEED_DEMO=true to load the sample dataset (great for sales demos).
+  seed-demo: ${SEED_DEMO:false}
+  # Default admin bootstrap account (created only when no users exist).
+  # Change ADMIN_PASSWORD before any real deployment.
+  admin-password: ${ADMIN_PASSWORD:admin123}
   ai:
     provider: ${AI_PROVIDER:rule-based}
     openai-api-key: ${OPENAI_API_KEY:}

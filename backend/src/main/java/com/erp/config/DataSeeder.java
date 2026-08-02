@@ -3,6 +3,7 @@ package com.erp.config;
 import com.erp.entity.*;
 import com.erp.enums.*;
 import com.erp.repository.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,8 +17,25 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Database initializer.
+ *
+ * Always creates the three core roles (ADMIN / MANAGER / EMPLOYEE) and a
+ * default admin bootstrap user (only if no users exist yet) so the app is
+ * usable on a fresh database.
+ *
+ * When xiroa.seed-demo=true (env SEED_DEMO=true), a full demo dataset is also
+ * loaded: departments, employees, products, inventory, customers, vendors,
+ * invoices and payroll. This is OFF by default for production.
+ */
 @Configuration
 public class DataSeeder {
+
+        @Value("${xiroa.seed-demo:false}")
+        private boolean seedDemo;
+
+        @Value("${xiroa.admin-password:admin123}")
+        private String adminPassword;
 
         @Bean
         CommandLineRunner seed(RoleRepository roleRepository,
@@ -35,13 +53,33 @@ public class DataSeeder {
                         PasswordEncoder passwordEncoder) {
 
                 return args -> {
-                        if (userRepository.count() > 0)
-                                return;
+                        // ---------- Always ensure roles exist ----------
+                        Role adminRole = roleRepository.findByName(RoleName.ADMIN)
+                                        .orElseGet(() -> roleRepository.save(new Role(null, RoleName.ADMIN)));
+                        roleRepository.findByName(RoleName.MANAGER)
+                                        .orElseGet(() -> roleRepository.save(new Role(null, RoleName.MANAGER)));
+                        roleRepository.findByName(RoleName.EMPLOYEE)
+                                        .orElseGet(() -> roleRepository.save(new Role(null, RoleName.EMPLOYEE)));
 
-                        // ---------- Roles ----------
-                        Role adminRole = roleRepository.save(new Role(null, RoleName.ADMIN));
-                        Role managerRole = roleRepository.save(new Role(null, RoleName.MANAGER));
-                        Role employeeRole = roleRepository.save(new Role(null, RoleName.EMPLOYEE));
+                        // ---------- Bootstrap admin user (only if no users exist) ----------
+                        if (userRepository.count() == 0) {
+                                User admin = new User();
+                                admin.setUsername("admin");
+                                admin.setPassword(passwordEncoder.encode(adminPassword));
+                                admin.setFullName("Administrator");
+                                admin.setEmail("admin@xiroa.app");
+                                admin.setEnabled(true);
+                                admin.setRole(adminRole);
+                                admin.setEmployee(null);
+                                userRepository.save(admin);
+                                System.out.println(
+                                                ">>> Xiroa: created default admin user (username=admin, password from ADMIN_PASSWORD env).");
+                        }
+
+                        // ---------- Demo data (optional, off by default) ----------
+                        if (!seedDemo || userRepository.count() > 1) {
+                                return;
+                        }
 
                         // ---------- Departments ----------
                         Department sales = departmentRepository
@@ -65,9 +103,9 @@ public class DataSeeder {
                                         .save(employee("Sneha Reddy", "EMP004", "sneha@erpstartup.com", "9876500004",
                                                         "Accountant", finance, new BigDecimal("55000.00")));
 
-                        // ---------- Users ----------
-                        userRepository.save(user("admin", "admin123", "Rahul Sharma", "admin@erpstartup.com", adminRole,
-                                        eAdmin, passwordEncoder));
+                        // ---------- Demo users (manager / employee) ----------
+                        Role managerRole = roleRepository.findByName(RoleName.MANAGER).orElseThrow();
+                        Role employeeRole = roleRepository.findByName(RoleName.EMPLOYEE).orElseThrow();
                         userRepository.save(user("manager", "manager123", "Priya Patel", "manager@erpstartup.com",
                                         managerRole, eManager, passwordEncoder));
                         userRepository.save(user("employee", "employee123", "Amit Verma", "amit@erpstartup.com",
@@ -108,14 +146,15 @@ public class DataSeeder {
                         // ---------- Customers ----------
                         Customer c1 = customerRepository
                                         .save(customer("GreenLeaf Retail", "27AABCG1283P1ZK", "buyer@greenleaf.in",
-                                                        "9876501234", "Mumbai", "Maharashtra",
-                                                        "12 Linking Road, Bandra", "GreenLeaf Retail Pvt Ltd"));
+                                                        "9876501234",
+                                                        "Mumbai", "Maharashtra", "12 Linking Road, Bandra",
+                                                        "GreenLeaf Retail Pvt Ltd"));
                         Customer c2 = customerRepository.save(customer("TechNova Solutions", "27AAACN1160P1ZC",
-                                        "purchase@technova.in",
-                                        "9988776655", "Pune", "Maharashtra", "44 Baner Road", "TechNova Solutions"));
+                                        "purchase@technova.in", "9988776655", "Pune", "Maharashtra", "44 Baner Road",
+                                        "TechNova Solutions"));
                         Customer c3 = customerRepository.save(customer("Sharma Traders", "07AAXPS7214L1ZB",
-                                        "sharma.traders@gmail.com",
-                                        "9765432109", "Delhi", "Delhi", "12 Chandni Chowk", "Sharma Traders"));
+                                        "sharma.traders@gmail.com", "9765432109", "Delhi", "Delhi", "12 Chandni Chowk",
+                                        "Sharma Traders"));
 
                         // ---------- Vendors ----------
                         vendorRepository.save(vendor("Global Electronics Ltd", "27AABCT2234M1ZT", "Rajesh K",
@@ -210,6 +249,8 @@ public class DataSeeder {
                                                 currentMonth, currentYear, basic, hra, allowances, deductions, netPay,
                                                 PaymentStatus.PAID));
                         }
+
+                        System.out.println(">>> Xiroa: demo data loaded (SEED_DEMO=true).");
                 };
         }
 
